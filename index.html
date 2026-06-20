@@ -48,9 +48,84 @@ button.gray{background:#555}
 .review details{border:1px solid #aaa;margin:8px 0;padding:10px;background:#fafafa}
 .small{font-size:13px;color:#555}
 @media(max-width:850px){.content{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid #aaa}.doc-head{padding:22px}.main{padding:18px}.qtext{font-size:20px}}
+
+.nick-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.65);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:20px;
+}
+.nick-box{
+  width:100%;
+  max-width:560px;
+  background:#fff;
+  border:3px solid #222;
+  box-shadow:0 12px 38px rgba(0,0,0,.5);
+  font-family:Arial,Helvetica,sans-serif;
+}
+.nick-box-head{
+  background:#202020;
+  color:#fff;
+  padding:14px 18px;
+  font-weight:700;
+  letter-spacing:.4px;
+}
+.nick-box-body{
+  padding:22px;
+  line-height:1.5;
+}
+.nick-box label{
+  display:block;
+  font-weight:700;
+  margin:14px 0 7px;
+}
+.nick-box input{
+  width:100%;
+  padding:13px;
+  border:1px solid #555;
+  font-size:17px;
+}
+.nick-error{
+  display:none;
+  margin-top:10px;
+  color:#8d1717;
+  font-weight:700;
+}
+.exam-important{
+  margin-top:20px;
+  border:2px solid #8d1717;
+  background:#fff3f3;
+  padding:15px;
+}
+.exam-important h3{
+  margin:0 0 10px;
+  color:#8d1717;
+}
+
 </style>
 </head>
 <body>
+
+<div id="nickModal" class="nick-modal">
+  <div class="nick-box">
+    <div class="nick-box-head">Dane kandydata</div>
+    <div class="nick-box-body">
+      <p>Przed rozpoczęciem egzaminu wpisz swój nick gracza. Ten nick zostanie wysłany razem z wynikiem egzaminu.</p>
+      <label for="nickInput">Nick gracza:</label>
+      <input id="nickInput" type="text" maxlength="32" autocomplete="off" placeholder="Np. Pawdan22">
+      <div id="nickError" class="nick-error">Wpisz poprawny nick, minimum 3 znaki.</div>
+      <div class="controls" style="margin-top:18px">
+        <button onclick="confirmNickAndStart()">Rozpocznij egzamin</button>
+        <button class="gray" onclick="closeNickModal()">Anuluj</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="header">
   <strong>System egzaminacyjny WORD — teoria kat. B</strong>
   <div>Czas egzaminu: <span class="clock" id="globalClock">25:00</span></div>
@@ -90,7 +165,15 @@ button.gray{background:#555}
         <p>Egzamin losuje 32 pytania z bazy 150 pytań: 20 podstawowych TAK/NIE oraz 12 specjalistycznych A/B/C.</p>
         <p>W pytaniach podstawowych jest 20 sekund na zapoznanie się z pytaniem i 15 sekund na odpowiedź. Odpowiedź można zaznaczyć już podczas zapoznania. W pytaniach specjalistycznych jest 50 sekund łącznie.</p>
         <p>Po przejściu dalej nie można wrócić do poprzedniego pytania. Brak odpowiedzi oznacza 0 punktów.</p>
-        <button onclick="startExam()">Rozpocznij egzamin</button>
+
+        <div class="exam-important">
+          <h3>Ważna informacja</h3>
+          <p>Na zdanie egzaminu masz <strong>3 próby</strong>.</p>
+          <p>Po 3 próbach dostęp do strony z egzaminem jest zablokowany.</p>
+          <p>Odblokowanie go możliwe jest wyłącznie przez kontakt z Dyrektorem VMPK.</p>
+        </div>
+
+        <button onclick="openNickModal()">Rozpocznij egzamin</button>
       </section>
 
       <section id="examScreen" class="question-card" style="display:none">
@@ -1859,8 +1942,85 @@ function buildMap(){
   byId("questionMap").innerHTML = questions.map((_,i)=>`<span class="badge" id="b${i}">${i+1}</span>`).join("");
 }
 
+
+
+function getAttemptData(){
+  try{
+    return JSON.parse(localStorage.getItem("vmpk_exam_attempts") || "{}");
+  }catch(e){
+    return {};
+  }
+}
+
+function saveAttemptData(data){
+  localStorage.setItem("vmpk_exam_attempts", JSON.stringify(data));
+}
+
+function canStartForNick(nick){
+  const data = getAttemptData();
+  const key = nick.toLowerCase();
+  const record = data[key] || {attempts:0, blocked:false};
+
+  if(record.blocked || record.attempts >= 3){
+    showSecurityWarning("Ten nick wykorzystał 3 próby. Odblokowanie możliwe wyłącznie przez kontakt z Dyrektorem VMPK.");
+    return false;
+  }
+
+  return true;
+}
+
+function registerAttemptForNick(nick){
+  const data = getAttemptData();
+  const key = nick.toLowerCase();
+  const record = data[key] || {attempts:0, blocked:false};
+
+  record.attempts += 1;
+  if(record.attempts >= 3){
+    record.blocked = true;
+  }
+
+  data[key] = record;
+  saveAttemptData(data);
+}
+
+function openNickModal(){
+  byId("nickModal").style.display = "flex";
+  byId("nickError").style.display = "none";
+  setTimeout(() => byId("nickInput").focus(), 50);
+}
+
+function closeNickModal(){
+  byId("nickModal").style.display = "none";
+}
+
+function confirmNickAndStart(){
+  const rawNick = byId("nickInput").value.trim();
+  const cleanNick = rawNick.replace(/[^a-zA-Z0-9_ .-]/g, "");
+
+  if(cleanNick.length < 3){
+    byId("nickError").style.display = "block";
+    return;
+  }
+
+  if(!canStartForNick(cleanNick)){
+    closeNickModal();
+    return;
+  }
+
+  playerName = cleanNick;
+  registerAttemptForNick(playerName);
+  closeNickModal();
+  startExam();
+}
+
+document.addEventListener("keydown", function(e){
+  const modal = byId("nickModal");
+  if(modal && modal.style.display === "flex" && e.key === "Enter"){
+    confirmNickAndStart();
+  }
+});
+
 function startExam(){
-  playerName = prompt("Podaj swój nick:") || "Nie podano";
   examStarted = true;
   prepareExamQuestions();
   buildMap();
@@ -1957,7 +2117,8 @@ function finishExam(reason = ""){
         `Nick: ${playerName}\n` +
         `Wynik: ${score}/74\n` +
         `Status: ${passed ? "ZDANE ✅" : "NIEZDANE ❌"}\n` +
-        `Naruszenia: ${typeof tabViolations !== "undefined" ? tabViolations : 0}`
+        `Naruszenia: ${typeof tabViolations !== "undefined" ? tabViolations : 0}\n` +
+        `Próba: ${(getAttemptData()[playerName.toLowerCase()] || {attempts:1}).attempts}/3`
     })
   }).catch(()=>{});
 

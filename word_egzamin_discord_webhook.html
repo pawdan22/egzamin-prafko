@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WORD - Egzamin teoretyczny kat. B</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#bdbdbd;font-family:Arial,Helvetica,sans-serif;color:#111}
+.header{background:#202020;color:#fff;padding:12px 24px;display:flex;justify-content:space-between;align-items:center}
+.header strong{letter-spacing:.5px}
+.clock{font-size:22px;color:#ffd84d;font-weight:700}
+.wrapper{max-width:1100px;margin:26px auto;background:#f7f7f7;border:1px solid #777;box-shadow:0 8px 25px rgba(0,0,0,.35)}
+.doc-head{background:#fff;padding:28px 42px;border-bottom:3px solid #222;font-family:"Times New Roman",serif}
+.doc-head h1{text-align:center;font-size:25px;margin:0;text-transform:uppercase}
+.doc-head p{text-align:center;margin:8px 0 0;font-size:16px}
+.content{display:grid;grid-template-columns:260px 1fr;min-height:650px}
+.sidebar{background:#ececec;border-right:1px solid #aaa;padding:18px}
+.panel{background:white;border:1px solid #999;margin-bottom:14px;padding:14px}
+.panel h3{margin:0 0 10px;font-size:15px}
+.badge{display:inline-block;padding:5px 9px;border:1px solid #333;background:#fff;margin:3px;font-weight:700;font-size:13px}
+.active-badge{background:#1f4e79;color:white}
+.main{padding:28px;background:#fff}
+.notice{border:1px solid #333;background:#fafafa;padding:18px;line-height:1.55;font-size:16px}
+.question-card{border:2px solid #222;background:#fff;padding:22px;min-height:370px}
+.meta{display:flex;justify-content:space-between;gap:12px;margin-bottom:18px;font-size:14px}
+.meta span{border:1px solid #555;padding:8px 10px;background:#f3f3f3}
+.phase{font-weight:700;color:#9b1c1c}
+.qtext{font-family:"Times New Roman",serif;font-size:23px;line-height:1.35;margin:28px 0}
+.answers{display:grid;gap:12px}
+.answer{border:1px solid #333;padding:15px;cursor:pointer;font-size:18px;background:#fff}
+.answer:hover{background:#eee}
+.answer.disabled{opacity:.55}
+.answer.selected{outline:3px solid #1f4e79;background:#eaf3ff}
+.security-warning{display:none;background:#8d1717;color:#fff;padding:12px 18px;font-weight:700;text-align:center}
+.security-warning.show{display:block}
+.controls{display:flex;justify-content:space-between;margin-top:22px;gap:12px}
+button{border:none;background:#1f4e79;color:white;padding:13px 22px;font-size:15px;font-weight:700;cursor:pointer}
+button:hover{background:#163a59}
+button:disabled{background:#999;cursor:not-allowed}
+button.red{background:#8d1717}
+button.gray{background:#555}
+.progressbar{height:15px;background:#ddd;border:1px solid #999;margin-top:10px}
+.fill{height:100%;width:0%;background:#1f4e79}
+.result{text-align:center;padding:35px;font-size:18px}
+.pass{color:#087a18}.fail{color:#a00000}
+.review{margin-top:22px;text-align:left}
+.review details{border:1px solid #aaa;margin:8px 0;padding:10px;background:#fafafa}
+.small{font-size:13px;color:#555}
+@media(max-width:850px){.content{grid-template-columns:1fr}.sidebar{border-right:0;border-bottom:1px solid #aaa}.doc-head{padding:22px}.main{padding:18px}.qtext{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <strong>System egzaminacyjny WORD — teoria kat. B</strong>
+  <div>Czas egzaminu: <span class="clock" id="globalClock">25:00</span></div>
+</div>
+<div id="securityWarning" class="security-warning"></div>
+
+<div class="wrapper">
+  <div class="doc-head">
+    <h1>Egzamin państwowy — część teoretyczna</h1>
+    <p>Symulator szkoleniowy HTML / pytania przykładowe</p>
+  </div>
+
+  <div class="content">
+    <aside class="sidebar">
+      <div class="panel">
+        <h3>Kandydat</h3>
+        <div class="small">Tryb: egzamin próbny</div>
+        <div class="small">Kategoria: B</div>
+        <div class="small">Wymagane: 68 / 74 pkt</div>
+      </div>
+      <div class="panel">
+        <h3>Postęp</h3>
+        <div id="questionMap"></div>
+        <div class="progressbar"><div class="fill" id="progressFill"></div></div>
+        <p class="small" id="progressText">0 / 32</p>
+      </div>
+      <div class="panel">
+        <h3>Aktualny limit</h3>
+        <p id="localClock" class="clock" style="color:#111">--</p>
+        <p class="small" id="phaseText">Egzamin nierozpoczęty</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="startScreen" class="notice">
+        <h2>Instrukcja</h2>
+        <p>Egzamin losuje 32 pytania z bazy 150 pytań: 20 podstawowych TAK/NIE oraz 12 specjalistycznych A/B/C.</p>
+        <p>W pytaniach podstawowych jest 20 sekund na zapoznanie się z pytaniem i 15 sekund na odpowiedź. Odpowiedź można zaznaczyć już podczas zapoznania. W pytaniach specjalistycznych jest 50 sekund łącznie.</p>
+        <p>Po przejściu dalej nie można wrócić do poprzedniego pytania. Brak odpowiedzi oznacza 0 punktów.</p>
+        <button onclick="startExam()">Rozpocznij egzamin</button>
+      </section>
+
+      <section id="examScreen" class="question-card" style="display:none">
+        <div class="meta">
+          <span id="qNumber"></span>
+          <span id="qType"></span>
+          <span>Punkty: <strong id="qPoints"></strong></span>
+          <span class="phase" id="qPhase"></span>
+        </div>
+        <div class="qtext" id="qText"></div>
+        <div class="answers" id="answers"></div>
+        <div class="controls">
+          <button class="gray" id="skipBtn" onclick="nextQuestion()">Następne pytanie</button>
+          <button class="red" onclick="finishExam()">Zakończ egzamin</button>
+        </div>
+      </section>
+
+      <section id="resultScreen" class="result" style="display:none"></section>
+    </main>
+  </div>
+</div>
+
+<script>
+const questionBank = [
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący pojazdem ma obowiązek zachować szczególną ostrożność zbliżając się do przejścia dla pieszych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy czerwone światło nadawane przez sygnalizator oznacza zakaz wjazdu za sygnalizator?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy wolno prowadzić pojazd po użyciu alkoholu, jeżeli droga jest pusta?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien ustąpić pierwszeństwa pieszemu znajdującemu się na przejściu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy znak STOP nakazuje zatrzymanie pojazdu przed wjazdem na skrzyżowanie lub w wyznaczonym miejscu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy można wyprzedzać bezpośrednio przed przejściem dla pieszych, jeżeli nie ma sygnalizacji?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy pasy bezpieczeństwa należy zapiąć przed rozpoczęciem jazdy?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy zbliżając się do przejazdu kolejowego należy zachować szczególną ostrożność?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy kierujący może używać telefonu trzymanego w ręku podczas jazdy?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy autobus komunikacji miejskiej ruszający z zatoki w obszarze zabudowanym powinien mieć ułatwiony wjazd do ruchu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy podczas mgły kierujący powinien dostosować prędkość do ograniczonej widoczności?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy na autostradzie można cofać pojazdem na pasie ruchu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący ma obowiązek stosować się do poleceń osoby kierującej ruchem?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy światła awaryjne służą do sygnalizowania zamiaru skrętu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy w razie wypadku należy zabezpieczyć miejsce zdarzenia?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zachować odstęp umożliwiający uniknięcie zderzenia przy hamowaniu poprzedzającego pojazdu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierunkowskaz należy włączyć przed zmianą pasa ruchu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy znak zakazu postoju oznacza jednocześnie zakaz zatrzymywania pojazdu w każdej sytuacji?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierowca powinien dbać o czytelność tablic rejestracyjnych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy pojazd niesprawny technicznie można użytkować bez ograniczeń, jeśli jedziemy powoli?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący ma obowiązek zmniejszyć prędkość, gdy zbliża się do szkoły i widzi dzieci przy drodze?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy na skrzyżowaniu równorzędnym pierwszeństwo ma pojazd nadjeżdżający z prawej strony?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy wolno omijać pojazd, który zatrzymał się przed przejściem dla pieszych w celu ustąpienia pierwszeństwa?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy podczas jazdy w tunelu należy zachować odpowiedni odstęp od poprzedzającego pojazdu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy kierujący może zatrzymać pojazd na przejeździe kolejowym, jeśli korek znajduje się za przejazdem?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy włączając się do ruchu, kierujący musi ustąpić pierwszeństwa innym uczestnikom ruchu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy pojazd uprzywilejowany na sygnałach świetlnych i dźwiękowych powinien mieć ułatwiony przejazd?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy można parkować na miejscu dla osoby niepełnosprawnej bez wymaganej karty parkingowej?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien sprawdzić lusterka przed zmianą pasa ruchu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy podczas deszczu droga hamowania może się wydłużyć?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy wolno przejechać przez skrzyżowanie, jeśli za nim nie ma miejsca do kontynuowania jazdy?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zachować szczególną ostrożność przy wyprzedzaniu rowerzysty?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy pieszy na przejściu ma pierwszeństwo przed pojazdem?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy wolno przekraczać linię podwójną ciągłą?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien używać świateł zgodnie z warunkami na drodze?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy można przewozić dziecko bez wymaganego fotelika lub urządzenia przytrzymującego, gdy przepisy tego wymagają?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien umożliwić włączenie się do ruchu autobusowi komunikacji miejskiej w obszarze zabudowanym?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy można zatrzymać pojazd na torowisku tramwajowym, jeśli utrudni to przejazd tramwaju?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy tramwaj może mieć pierwszeństwo w sytuacjach określonych przepisami?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący ma obowiązek zachować ostrożność wobec rowerzystów i pieszych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy wolno jechać pojazdem bez ważnych badań technicznych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy w razie awarii na drodze należy włączyć światła awaryjne, jeżeli pojazd je posiada?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien dostosować prędkość do warunków ruchu, widoczności i stanu nawierzchni?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy można przewozić pasażera bez zapiętych pasów, jeśli jedzie się tylko kilka minut?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy znak ustąp pierwszeństwa oznacza obowiązek ustąpienia pojazdom na drodze z pierwszeństwem?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierowca powinien zachować szczególną ostrożność podczas cofania?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy wolno cofać w tunelu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy pojazd powinien mieć sprawne światła wymagane przepisami?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien reagować na sygnały dawane przez osobę kierującą ruchem?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 3,
+    "correct": "Nie",
+    "text": "Czy można używać świateł drogowych, gdy oślepia się innych kierujących?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy wolno zatrzymać pojazd na przejściu dla pieszych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący rowerem jest uczestnikiem ruchu drogowego?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierowca powinien upewnić się, że manewr wyprzedzania jest bezpieczny?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy można wyprzedzać na przejeździe kolejowym?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy sygnały policjanta są ważniejsze od sygnałów świetlnych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy wjazd na skrzyżowanie przy zielonym świetle zawsze jest dozwolony, nawet jeśli nie można go opuścić?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zmniejszyć prędkość przed ostrym zakrętem?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy telefon w uchwycie można obsługiwać tak, aby nie powodować zagrożenia?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy kierujący może ignorować znaki drogowe, jeśli zna drogę?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy przed otwarciem drzwi pojazdu należy upewnić się, że nie spowoduje to zagrożenia?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy jazda z nadmierną prędkością zwiększa ryzyko wypadku?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien ustąpić pierwszeństwa pojazdowi szynowemu, gdy wymagają tego przepisy?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy można zostawić pojazd z pracującym silnikiem na postoju bez potrzeby?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zachować ostrożność przy przejeżdżaniu obok przystanku autobusowego?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy pieszy przechodzący przez jezdnię w miejscu niedozwolonym zawsze ma pierwszeństwo?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zwolnić, gdy widzi znak ostrzegawczy?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy wolno wyprzedzać z prawej strony w każdej sytuacji?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący musi użyć kierunkowskazu przy skręcie?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy jazda bez wymaganych świateł po zmroku jest dozwolona?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy przy zmianie pasa trzeba ustąpić pojazdowi jadącemu pasem, na który zamierzamy wjechać?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy na drodze ekspresowej wolno zawracać?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien kontrolować stan techniczny pojazdu przed jazdą?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy nadmierne zmęczenie kierowcy może być niebezpieczne?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy wolno przejeżdżać przez przejazd kolejowy, gdy zapory są opuszczane?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy sygnał żółty migający ostrzega i nakazuje zachowanie szczególnej ostrożności?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien umożliwić bezpieczne opuszczenie pojazdu pasażerom?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy parkowanie na chodniku jest zawsze dozwolone?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zachować ostrożność przy przejściach dla pieszych i przejazdach rowerowych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Nie",
+    "text": "Czy można przekraczać dopuszczalną prędkość podczas wyprzedzania?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 2,
+    "correct": "Tak",
+    "text": "Czy prawidłowa pozycja za kierownicą wpływa na bezpieczeństwo jazdy?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien ustąpić pierwszeństwa podczas wyjazdu z drogi wewnętrznej?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy znak zakazu wjazdu dotyczy wszystkich pojazdów, chyba że tabliczka stanowi inaczej?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy w warunkach zimowych droga hamowania może być dłuższa?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Nie",
+    "text": "Czy można prowadzić pojazd bez wymaganych uprawnień?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy kierowca powinien zachować ostrożność wobec pojazdów komunikacji publicznej wykonujących manewry przy przystankach?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy podczas jazdy należy obserwować nie tylko pojazd bezpośrednio przed sobą, ale też dalszą sytuację na drodze?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Nie",
+    "text": "Czy użycie klaksonu jest dozwolone w celu ponaglania innych kierowców?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zachować ostrożność podczas przejazdu obok robót drogowych?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Nie",
+    "text": "Czy można zatrzymać pojazd w miejscu, gdzie utrudni to wjazd lub wyjazd innemu pojazdowi?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien ustąpić pierwszeństwa tramwajowi na rondzie, jeśli wynika to ze znaków lub przepisów?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy jazda na zbyt małym odstępie za autobusem może ograniczać widoczność i bezpieczeństwo?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Nie",
+    "text": "Czy wolno wjechać za sygnalizator przy czerwonym świetle, jeśli nie widać innych pojazdów?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien zachować szczególną ostrożność podczas przejazdu obok roweru miejskiego lub hulajnogi?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Nie",
+    "text": "Czy można przewozić ładunek zasłaniający światła pojazdu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy sprawne hamulce są warunkiem bezpiecznej jazdy?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy kierujący powinien dostosować prędkość przy zbliżaniu się do skrzyżowania?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Nie",
+    "text": "Czy pojazd z pierwszeństwem zawsze może jechać bez zachowania ostrożności?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy przy omijaniu autobusu stojącego na przystanku należy zachować ostrożność?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Tak",
+    "text": "Czy piesi i rowerzyści należą do niechronionych uczestników ruchu?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Podstawowe",
+    "type": "TAK/NIE",
+    "points": 1,
+    "correct": "Nie",
+    "text": "Czy kierujący może ignorować ograniczenie prędkości, jeśli droga jest szeroka?",
+    "answers": [
+      "Tak",
+      "Nie"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Jaka jest dopuszczalna prędkość samochodu osobowego w obszarze zabudowanym, jeśli znaki nie stanowią inaczej?",
+    "answers": [
+      "50 km/h",
+      "70 km/h",
+      "90 km/h"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Który dokument potwierdza uprawnienia do kierowania pojazdem kategorii B?",
+    "answers": [
+      "Dowód osobisty",
+      "Prawo jazdy",
+      "Dowód rejestracyjny"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "C",
+    "text": "Co należy zrobić, gdy uczestnik wypadku jest nieprzytomny, ale oddycha?",
+    "answers": [
+      "Podać mu wodę",
+      "Pozostawić go bez kontroli",
+      "Ułożyć w pozycji bezpiecznej, jeśli nie podejrzewa się urazu kręgosłupa"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Który pas należy zająć przed skrętem w lewo na jezdni jednokierunkowej?",
+    "answers": [
+      "Lewy",
+      "Prawy",
+      "Dowolny"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Co oznacza żółte światło ciągłe na sygnalizatorze?",
+    "answers": [
+      "Nakaz jazdy",
+      "Zakaz wjazdu za sygnalizator, chyba że zatrzymanie wymagałoby gwałtownego hamowania",
+      "Pierwszeństwo dla pieszych"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "C",
+    "text": "Kiedy należy używać świateł mijania?",
+    "answers": [
+      "Tylko nocą",
+      "Tylko poza obszarem zabudowanym",
+      "Od zmierzchu do świtu oraz w warunkach zmniejszonej przejrzystości powietrza"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Jaki odstęp od rowerzysty należy zachować podczas wyprzedzania?",
+    "answers": [
+      "Co najmniej 1 m",
+      "Co najmniej 20 cm",
+      "Nie ma wymaganego odstępu"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Co powinieneś zrobić, gdy zauważysz pojazd uprzywilejowany na sygnałach?",
+    "answers": [
+      "Przyspieszyć",
+      "Ułatwić mu przejazd",
+      "Zatrzymać się zawsze na środku jezdni"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "C",
+    "text": "Co oznacza linia podwójna ciągła?",
+    "answers": [
+      "Można ją przekraczać przy dobrej widoczności",
+      "Dotyczy tylko ciężarówek",
+      "Zakaz przejeżdżania przez tę linię i najeżdżania na nią"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Jaki jest podstawowy cel systemu ABS?",
+    "answers": [
+      "Pomaga zachować sterowność podczas hamowania",
+      "Zwiększa moc silnika",
+      "Automatycznie parkuje pojazd"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Co należy regularnie kontrolować w ogumieniu pojazdu?",
+    "answers": [
+      "Kolor opon",
+      "Ciśnienie i stan bieżnika",
+      "Markę producenta"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "C",
+    "text": "Co może zwiększyć zużycie paliwa?",
+    "answers": [
+      "Płynna jazda",
+      "Prawidłowe ciśnienie w oponach",
+      "Gwałtowne przyspieszanie i hamowanie"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Jak należy zachować się przed przejazdem kolejowym?",
+    "answers": [
+      "Przyspieszyć",
+      "Zachować szczególną ostrożność i upewnić się, że można przejechać",
+      "Zatrzymać się tylko nocą"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Co oznacza znak D-6?",
+    "answers": [
+      "Przejście dla pieszych",
+      "Droga ekspresowa",
+      "Koniec zakazów"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Który czynnik wydłuża drogę hamowania?",
+    "answers": [
+      "Sucha nawierzchnia",
+      "Mokra lub oblodzona nawierzchnia",
+      "Nowe wycieraczki"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Jaki manewr sygnalizujesz lewym kierunkowskazem?",
+    "answers": [
+      "Zamiar skrętu w lewo lub zmiany pasa na lewy",
+      "Hamowanie",
+      "Postój"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Co należy zrobić przy awarii pojazdu na drodze?",
+    "answers": [
+      "Zabezpieczyć miejsce i ostrzec innych uczestników ruchu",
+      "Wyłączyć światła",
+      "Zostawić pojazd bez oznakowania"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Kiedy można używać świateł drogowych?",
+    "answers": [
+      "Gdy nie oślepiają innych uczestników ruchu",
+      "Zawsze w mieście",
+      "Tylko podczas parkowania"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Co oznacza znak zakazu wjazdu?",
+    "answers": [
+      "Zakaz postoju",
+      "Zakaz wjazdu od strony znaku",
+      "Nakaz jazdy prosto"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Jak powinien zachować się kierujący przy znaku ustąp pierwszeństwa?",
+    "answers": [
+      "Zawsze przyspieszyć",
+      "Ustąpić pierwszeństwa pojazdom na drodze z pierwszeństwem",
+      "Zatrzymać się na 5 minut"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "B",
+    "text": "Co oznacza znak ograniczenia prędkości do 30 km/h?",
+    "answers": [
+      "Zalecaną prędkość",
+      "Maksymalną dopuszczalną prędkość",
+      "Minimalną prędkość"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Jakie światła należy włączyć podczas postoju awaryjnego, jeśli pojazd je posiada?",
+    "answers": [
+      "Awaryjne",
+      "Drogowe",
+      "Przeciwmgłowe tylne zawsze"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Który uczestnik ruchu jest szczególnie narażony na obrażenia?",
+    "answers": [
+      "Pieszy",
+      "Kierowca ciężarówki",
+      "Pasażer autobusu siedzący w środku"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Jak należy przewozić ładunek?",
+    "answers": [
+      "Tak, aby nie zagrażał bezpieczeństwu i nie zasłaniał świateł",
+      "Dowolnie",
+      "Wyłącznie na dachu"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 3,
+    "correct": "A",
+    "text": "Co oznacza zielone światło na sygnalizatorze?",
+    "answers": [
+      "Zezwala na wjazd za sygnalizator, jeśli nie spowoduje to zagrożenia",
+      "Nakazuje zatrzymanie",
+      "Dotyczy tylko autobusów"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co należy zrobić przed zmianą pasa ruchu?",
+    "answers": [
+      "Upewnić się, że manewr jest bezpieczny i zasygnalizować go",
+      "Zahamować awaryjnie",
+      "Włączyć światła awaryjne"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "B",
+    "text": "Który pojazd ma zwykle pierwszeństwo na skrzyżowaniu równorzędnym?",
+    "answers": [
+      "Nadjeżdżający z lewej",
+      "Nadjeżdżający z prawej",
+      "Największy pojazd"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Jak zachować się wobec autobusu ruszającego z zatoki w obszarze zabudowanym?",
+    "answers": [
+      "Ułatwić mu włączenie się do ruchu",
+      "Zawsze wyprzedzić",
+      "Zatrzymać się za nim na 10 minut"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co oznacza sygnał dźwiękowy pojazdu uprzywilejowanego razem z niebieskimi światłami?",
+    "answers": [
+      "Pojazd wykonuje zadania jako uprzywilejowany",
+      "Pojazd jest uszkodzony",
+      "Pojazd szuka miejsca parkingowego"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Jak zmęczenie wpływa na kierowcę?",
+    "answers": [
+      "Wydłuża czas reakcji i obniża koncentrację",
+      "Poprawia refleks",
+      "Nie ma znaczenia"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co trzeba zrobić, gdy hamulce działają niesprawnie?",
+    "answers": [
+      "Nie kontynuować jazdy bez usunięcia usterki",
+      "Jechać szybciej",
+      "Używać tylko klaksonu"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co może oznaczać długi czas reakcji kierowcy?",
+    "answers": [
+      "Większe ryzyko wypadku",
+      "Krótszą drogę hamowania",
+      "Lepszą widoczność"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co należy zrobić po zauważeniu pieszego wchodzącego na przejście?",
+    "answers": [
+      "Zachować szczególną ostrożność i ustąpić, jeśli przepisy tego wymagają",
+      "Przyspieszyć",
+      "Użyć świateł drogowych"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Gdzie nie wolno zatrzymywać pojazdu?",
+    "answers": [
+      "Na przejściu dla pieszych",
+      "Na własnym podjeździe",
+      "Na parkingu wyznaczonym"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Jak działa pas bezpieczeństwa?",
+    "answers": [
+      "Zmniejsza ryzyko obrażeń podczas zderzenia",
+      "Zwiększa prędkość pojazdu",
+      "Zastępuje hamulce"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co należy zrobić przed otwarciem drzwi pojazdu od strony jezdni?",
+    "answers": [
+      "Upewnić się, że nie spowoduje to zagrożenia",
+      "Otworzyć szybko",
+      "Włączyć światła drogowe"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co oznacza znak drogi z pierwszeństwem?",
+    "answers": [
+      "Informuje o pierwszeństwie na drodze",
+      "Zakazuje jazdy",
+      "Oznacza parking"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Jak zachować się przy żółtym migającym świetle?",
+    "answers": [
+      "Zachować szczególną ostrożność",
+      "Zatrzymać się zawsze na 10 sekund",
+      "Jechać bez ograniczeń"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Co oznacza czerwony trójkąt ostrzegawczy ustawiony za pojazdem?",
+    "answers": [
+      "Ostrzeżenie o unieruchomionym pojeździe lub zagrożeniu",
+      "Miejsce postoju taksówek",
+      "Nakaz zawracania"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 2,
+    "correct": "A",
+    "text": "Kiedy należy używać kierunkowskazów?",
+    "answers": [
+      "Przed skrętem, zmianą pasa lub zawracaniem",
+      "Tylko na autostradzie",
+      "Tylko nocą"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Co zwiększa bezpieczeństwo jazdy w deszczu?",
+    "answers": [
+      "Zmniejszenie prędkości i większy odstęp",
+      "Jazda bardzo blisko poprzednika",
+      "Wyłączenie świateł"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Jaki jest skutek jazdy ze zbyt małym ciśnieniem w oponach?",
+    "answers": [
+      "Może pogorszyć prowadzenie i zwiększyć zużycie paliwa",
+      "Zawsze skraca drogę hamowania",
+      "Nie ma wpływu"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Jak należy zachować się przy przejeździe dla rowerzystów?",
+    "answers": [
+      "Zachować szczególną ostrożność",
+      "Zawsze przyspieszyć",
+      "Zatrzymać się tylko przy autobusie"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Co oznacza sygnał czerwony i żółty nadawane jednocześnie?",
+    "answers": [
+      "Za chwilę nastąpi sygnał zielony, ale wjazd jest jeszcze zabroniony",
+      "Można jechać",
+      "Koniec sygnalizacji"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Kiedy kierowca powinien zwiększyć odstęp od poprzedzającego pojazdu?",
+    "answers": [
+      "Przy złej pogodzie lub śliskiej nawierzchni",
+      "Tylko na parkingu",
+      "Nigdy"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Co powinien zrobić kierujący przy zbliżaniu się do przystanku, z którego wysiadają pasażerowie?",
+    "answers": [
+      "Zachować szczególną ostrożność",
+      "Przyspieszyć",
+      "Włączyć światła drogowe"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Co jest celem ograniczeń prędkości?",
+    "answers": [
+      "Poprawa bezpieczeństwa ruchu",
+      "Zwiększenie hałasu",
+      "Utrudnienie komunikacji miejskiej"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Jak należy zachować się wobec pojazdu komunikacji miejskiej, gdy sygnalizuje wyjazd z zatoki?",
+    "answers": [
+      "Umożliwić mu włączenie się do ruchu, jeśli nie powoduje to zagrożenia",
+      "Zablokować mu wyjazd",
+      "Zawsze zatrąbić"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Co oznacza znak nakazu jazdy prosto?",
+    "answers": [
+      "Należy jechać prosto w miejscu obowiązywania znaku",
+      "Można skręcić w lewo",
+      "Oznacza drogę bez przejazdu"
+    ]
+  },
+  {
+    "section": "Specjalistyczne",
+    "type": "A/B/C",
+    "points": 1,
+    "correct": "A",
+    "text": "Co należy zrobić, gdy na jezdni znajduje się przeszkoda?",
+    "answers": [
+      "Zachować ostrożność, ominąć bezpiecznie albo zatrzymać się",
+      "Przyspieszyć",
+      "Zamknąć oczy"
+    ]
+  }
+];
+let questions = [];
+
+let current = 0, score = 0, chosen = null, examLeft = 25*60, localLeft = 0, phase = "read";
+let globalTimer = null, localTimer = null;
+let examStarted = false;
+let examFinished = false;
+let tabViolations = 0;
+const maxTabViolations = 3;
+const givenAnswers = [];
+let playerName = "";
+
+function shuffleArray(arr){
+  return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function pickQuestions(section, points, count){
+  const pool = questionBank.filter(q => q.section === section && q.points === points);
+  return shuffleArray(pool).slice(0, count);
+}
+
+function prepareExamQuestions(){
+  questions = [
+    ...pickQuestions("Podstawowe", 3, 10),
+    ...pickQuestions("Podstawowe", 2, 6),
+    ...pickQuestions("Podstawowe", 1, 4),
+    ...pickQuestions("Specjalistyczne", 3, 6),
+    ...pickQuestions("Specjalistyczne", 2, 4),
+    ...pickQuestions("Specjalistyczne", 1, 2)
+  ];
+
+  const basic = questions.filter(q => q.section === "Podstawowe");
+  const specialist = questions.filter(q => q.section === "Specjalistyczne");
+  questions = [...shuffleArray(basic), ...shuffleArray(specialist)];
+}
+
+
+function format(t){return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")}
+function byId(id){return document.getElementById(id)}
+
+function buildMap(){
+  byId("questionMap").innerHTML = questions.map((_,i)=>`<span class="badge" id="b${i}">${i+1}</span>`).join("");
+}
+
+function startExam(){
+  playerName = prompt("Podaj swój nick:") || "Nie podano";
+  examStarted = true;
+  prepareExamQuestions();
+  buildMap();
+  requestExamFullscreen();
+  byId("startScreen").style.display="none";
+  byId("examScreen").style.display="block";
+  globalTimer=setInterval(()=>{examLeft--; byId("globalClock").textContent=format(examLeft); if(examLeft<=0)finishExam("Czas egzaminu dobiegł końca.");},1000);
+  loadQuestion();
+}
+
+function loadQuestion(){
+  clearInterval(localTimer);
+  chosen=null;
+  const q=questions[current];
+  phase = q.section==="Podstawowe" ? "read" : "answer";
+  localLeft = q.section==="Podstawowe" ? 20 : 50;
+
+  byId("qNumber").textContent=`Pytanie ${current+1} z ${questions.length}`;
+  byId("qType").textContent=`${q.section} — ${q.type}`;
+  byId("qPoints").textContent=q.points;
+  byId("qText").textContent=q.text;
+  byId("answers").innerHTML=q.answers.map((a,i)=>{
+    const label=q.type==="A/B/C" ? String.fromCharCode(65+i) + "." : "";
+    return `<div class="answer" onclick="selectAnswer(${i})" id="ans${i}">${label ? `<strong>${label}</strong> ` : ""}${a}</div>`;
+  }).join("");
+  updateUI();
+  localTimer=setInterval(tickLocal,1000);
+}
+
+function tickLocal(){
+  localLeft--;
+  if(localLeft <= 0){
+    const q=questions[current];
+    if(q.section==="Podstawowe" && phase==="read"){
+      phase="answer";
+      localLeft=15;
+      updateUI();
+    } else {
+      nextQuestion();
+    }
+  }
+  updateUI();
+}
+
+function updateUI(){
+  byId("localClock").textContent = format(localLeft);
+  byId("qPhase").textContent = phase==="read" ? "Czas na zapoznanie" : "Czas na odpowiedź";
+  byId("phaseText").textContent = phase==="read" ? "Możesz już zaznaczyć odpowiedź." : "Możesz zaznaczyć lub zmienić odpowiedź.";
+  byId("progressText").textContent = `${current+1} / ${questions.length}`;
+  byId("progressFill").style.width = `${((current+1)/questions.length)*100}%`;
+  questions.forEach((_,i)=>byId("b"+i)?.classList.toggle("active-badge",i===current));
+}
+
+function selectAnswer(i){
+  chosen = i;
+  document.querySelectorAll(".answer").forEach(el=>el.classList.remove("selected"));
+  byId("ans"+i).classList.add("selected");
+}
+
+function nextQuestion(){
+  clearInterval(localTimer);
+  const q=questions[current];
+  const selectedText = chosen===null ? null : q.answers[chosen];
+  let ok = false;
+  if(selectedText){
+    ok = q.type==="A/B/C" ? selectedText.startsWith(q.correct === "A" ? q.answers[0] : q.correct === "B" ? q.answers[1] : q.answers[2]) : selectedText===q.correct;
+    if(q.type==="A/B/C") ok = String.fromCharCode(65+chosen)===q.correct;
+  }
+  if(ok) score += q.points;
+  givenAnswers.push({q:q.text, selected:selectedText || "Brak odpowiedzi", correct:q.correct, points:q.points, ok});
+
+  if(current < questions.length-1){
+    current++;
+    loadQuestion();
+  } else {
+    finishExam();
+  }
+}
+
+function finishExam(reason = ""){
+  if(examFinished) return;
+  examFinished = true;
+  clearInterval(globalTimer); clearInterval(localTimer);
+  byId("examScreen").style.display="none";
+  byId("resultScreen").style.display="block";
+  const passed = score >= 68;
+
+  fetch("https://discord.com/api/webhooks/1517924646572523603/sFi6ucD267AA6zpV1OBBo0akCeR5VeAqB6-RlaPi8gucsSZITNJ9KKKJuriJVreXldwv", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content:
+        `📋 **Nowy wynik egzaminu**\n` +
+        `Nick: ${playerName}\n` +
+        `Wynik: ${score}/74\n` +
+        `Status: ${passed ? "ZDANE ✅" : "NIEZDANE ❌"}\n` +
+        `Naruszenia: ${typeof tabViolations !== "undefined" ? tabViolations : 0}`
+    })
+  }).catch(()=>{});
+
+  byId("resultScreen").innerHTML = `
+    ${reason ? `<p style="color:#8d1717;font-weight:700">${reason}</p>` : ""}
+    <h2 class="${passed?'pass':'fail'}">${passed?'WYNIK POZYTYWNY':'WYNIK NEGATYWNY'}</h2>
+    <p><strong>Twój wynik:</strong> ${score} / 74 pkt</p>
+    <p><strong>Naruszenia zmiany karty/okna:</strong> ${tabViolations} / ${maxTabViolations}</p>
+    <p><strong>Próg zdania:</strong> 68 pkt</p>
+    <button onclick="location.reload()">Rozpocznij ponownie</button>
+    <div class="review">
+      <h3>Podsumowanie odpowiedzi</h3>
+      ${givenAnswers.map((r,i)=>`<details><summary>${i+1}. ${r.ok?'✅':'❌'} ${r.points} pkt — ${r.q}</summary><p>Twoja odpowiedź: <strong>${r.selected}</strong></p><p>Poprawna: <strong>${r.correct}</strong></p></details>`).join("")}
+    </div>
+  `;
+}
+
+function requestExamFullscreen(){
+  const el = document.documentElement;
+  if(el.requestFullscreen){
+    el.requestFullscreen().catch(() => {
+      showSecurityWarning("Nie udało się włączyć pełnego ekranu. Kliknij F11 lub uruchom egzamin ponownie.");
+    });
+  }
+}
+
+function showSecurityWarning(text){
+  const box = byId("securityWarning");
+  box.textContent = text;
+  box.classList.add("show");
+  setTimeout(() => box.classList.remove("show"), 4500);
+}
+
+function registerViolation(reason){
+  if(!examStarted || examFinished) return;
+  tabViolations++;
+  showSecurityWarning(`Naruszenie zasad egzaminu: ${reason}. Liczba naruszeń: ${tabViolations}/${maxTabViolations}`);
+  if(tabViolations >= maxTabViolations){
+    finishExam("Egzamin zakończony z powodu opuszczenia karty, okna lub trybu pełnoekranowego.");
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden){
+    registerViolation("opuszczenie karty");
+  }
+});
+
+window.addEventListener("blur", () => {
+  registerViolation("utrata aktywnego okna");
+});
+
+document.addEventListener("fullscreenchange", () => {
+  if(examStarted && !examFinished && !document.fullscreenElement){
+    registerViolation("opuszczenie trybu pełnoekranowego");
+  }
+});
+
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+document.addEventListener("keydown", function(e){
+  const key = e.key.toLowerCase();
+  const blocked =
+    e.key === "F12" ||
+    (e.ctrlKey && e.shiftKey && ["i","j","c"].includes(key)) ||
+    (e.ctrlKey && ["u","s","p","r"].includes(key)) ||
+    (e.altKey && key === "tab");
+
+  if(blocked){
+    e.preventDefault();
+    registerViolation("użycie zablokowanego skrótu");
+  }
+});
+
+window.addEventListener("beforeunload", function(e){
+  if(examStarted && !examFinished){
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
+
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WORD - Egzamin teoretyczny kat. B</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#bdbdbd;font-family:Arial,Helvetica,sans-serif;color:#111}
@@ -174,6 +175,7 @@ button.gray{background:#555}
         </div>
 
         <button onclick="openNickModal()">Rozpocznij egzamin</button>
+        <p class="small" id="syncStatus" style="margin-top:14px;color:#555">Wynik i liczba prób są synchronizowane z panelem kierowcy.</p>
       </section>
 
       <section id="examScreen" class="question-card" style="display:none">
@@ -197,6 +199,46 @@ button.gray{background:#555}
 </div>
 
 <script>
+const sb = window.supabase.createClient('https://rgkpsalluqhncepieuht.supabase.co', 'sb_publishable_UVLQNk4RSTuFZsjTJilDeA_M62vfl5Q');
+let currentRecruitmentRecord = null;
+let currentQuizMeta = null;
+let currentAttemptNumber = 0;
+
+function normalizeNick(value){
+  return (value || "").toString().trim().toLowerCase().replace(/^@/, "").replace(/[^a-z0-9_.-]/g, "");
+}
+
+function getQuizMetaFromRecord(rec){
+  const q = rec && rec.quiz;
+  if(q && !Array.isArray(q) && typeof q === "object") return q;
+  return { status: "oczekuje", attempts: 0, examPassed: false };
+}
+
+function isAcceptedForExam(meta){
+  const status = normalizeNick(meta && meta.status);
+  return ["przeszedl", "przeszedł", "przyjety", "przyjęty", "zaakceptowany", "accepted", "zdany"].includes(status);
+}
+
+async function findRecruitmentByNick(nick){
+  const target = normalizeNick(nick);
+  const { data, error } = await sb.from('rekrutacja').select('*').order('id', { ascending: false });
+  if(error) throw error;
+  return (data || []).find(row => normalizeNick(row.nick) === target) || null;
+}
+
+async function saveQuizMeta(meta){
+  if(!currentRecruitmentRecord) throw new Error("Brak rekordu rekrutacji");
+  const { data, error } = await sb.from('rekrutacja')
+    .update({ quiz: meta })
+    .eq('id', currentRecruitmentRecord.id)
+    .select('id,nick,quiz');
+  if(error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if(row) currentRecruitmentRecord = row;
+  currentQuizMeta = meta;
+  return row;
+}
+
 const questionBank = [
   {
     "section": "Podstawowe",
@@ -1993,24 +2035,63 @@ function closeNickModal(){
   byId("nickModal").style.display = "none";
 }
 
-function confirmNickAndStart(){
+async function confirmNickAndStart(){
   const rawNick = byId("nickInput").value.trim();
-  const cleanNick = rawNick.replace(/[^a-zA-Z0-9_ .-]/g, "");
+  const cleanNick = rawNick.replace(/[^a-zA-Z0-9_ .-]/g, "").replace(/^@/, "");
 
   if(cleanNick.length < 3){
     byId("nickError").style.display = "block";
     return;
   }
 
-  if(!canStartForNick(cleanNick)){
-    closeNickModal();
-    return;
-  }
+  byId("nickError").style.display = "none";
+  const startBtn = document.querySelector("#nickModal button");
+  if(startBtn){ startBtn.disabled = true; startBtn.textContent = "Sprawdzanie..."; }
 
-  playerName = cleanNick;
-  registerAttemptForNick(playerName);
-  closeNickModal();
-  startExam();
+  try{
+    const rec = await findRecruitmentByNick(cleanNick);
+    if(!rec){
+      showSecurityWarning("Nie znaleziono zaakceptowanego podania dla tego nicku. Wpisz dokładnie nick z podania.");
+      return;
+    }
+
+    const meta = getQuizMetaFromRecord(rec);
+    if(!isAcceptedForExam(meta)){
+      showSecurityWarning("Twoje podanie nie jest jeszcze oznaczone jako PRZESZEDŁ w panelu dyspozytora.");
+      return;
+    }
+
+    if(meta.examPassed === true){
+      showSecurityWarning("Ten kandydat ma już pozytywny wynik egzaminu. Poczekaj na rolę vmpk driver.");
+      return;
+    }
+
+    const attempts = Number(meta.attempts || 0);
+    if(attempts >= 3){
+      showSecurityWarning("Ten kandydat wykorzystał 3 próby. Odblokowanie możliwe wyłącznie przez kontakt z Dyrektorem VMPK.");
+      return;
+    }
+
+    currentRecruitmentRecord = rec;
+    currentQuizMeta = meta;
+    currentAttemptNumber = attempts + 1;
+
+    await saveQuizMeta({
+      ...meta,
+      status: meta.status || "przeszedl",
+      examPassed: false,
+      attempts: currentAttemptNumber,
+      lastAttemptStartedAt: new Date().toISOString()
+    });
+
+    playerName = cleanNick;
+    closeNickModal();
+    startExam();
+  }catch(err){
+    showSecurityWarning("Błąd połączenia z Supabase: " + (err.message || err));
+  }finally{
+    if(startBtn){ startBtn.disabled = false; startBtn.textContent = "Rozpocznij egzamin"; }
+  }
 }
 
 document.addEventListener("keydown", function(e){
@@ -2100,13 +2181,43 @@ function nextQuestion(){
   }
 }
 
-function finishExam(reason = ""){
+async function finishExam(reason = ""){
   if(examFinished) return;
   examFinished = true;
   clearInterval(globalTimer); clearInterval(localTimer);
   byId("examScreen").style.display="none";
   byId("resultScreen").style.display="block";
   const passed = score >= 68;
+  const nowIso = new Date().toISOString();
+
+  let syncMessage = "";
+  try{
+    if(currentRecruitmentRecord){
+      const previous = currentQuizMeta || getQuizMetaFromRecord(currentRecruitmentRecord);
+      const updated = {
+        ...previous,
+        status: previous.status || "przeszedl",
+        examPassed: passed === true,
+        attempts: currentAttemptNumber || Number(previous.attempts || 1),
+        lastScore: score,
+        lastResult: passed ? "passed" : "failed",
+        lastExamAt: nowIso,
+        lastReason: reason || null,
+        tabViolations: typeof tabViolations !== "undefined" ? tabViolations : 0
+      };
+      if(passed){
+        updated.examPassedAt = nowIso;
+      }
+      await saveQuizMeta(updated);
+      syncMessage = passed
+        ? "Wynik pozytywny zapisany w panelu. Teraz poczekaj na rolę vmpk driver."
+        : `Wynik negatywny zapisany w panelu. Wykorzystane próby: ${updated.attempts}/3.`;
+    }else{
+      syncMessage = "Uwaga: wynik nie został zsynchronizowany, bo nie znaleziono rekordu rekrutacji.";
+    }
+  }catch(err){
+    syncMessage = "Uwaga: nie udało się zapisać wyniku w Supabase: " + (err.message || err);
+  }
 
   fetch("https://discord.com/api/webhooks/1517924646572523603/sFi6ucD267AA6zpV1OBBo0akCeR5VeAqB6-RlaPi8gucsSZITNJ9KKKJuriJVreXldwv", {
     method: "POST",
@@ -2118,7 +2229,8 @@ function finishExam(reason = ""){
         `Wynik: ${score}/74\n` +
         `Status: ${passed ? "ZDANE ✅" : "NIEZDANE ❌"}\n` +
         `Naruszenia: ${typeof tabViolations !== "undefined" ? tabViolations : 0}\n` +
-        `Próba: ${(getAttemptData()[playerName.toLowerCase()] || {attempts:1}).attempts}/3`
+        `Próba: ${currentAttemptNumber || "?"}/3\n` +
+        `Synchronizacja: ${syncMessage}`
     })
   }).catch(()=>{});
 
@@ -2126,9 +2238,11 @@ function finishExam(reason = ""){
     ${reason ? `<p style="color:#8d1717;font-weight:700">${reason}</p>` : ""}
     <h2 class="${passed?'pass':'fail'}">${passed?'WYNIK POZYTYWNY':'WYNIK NEGATYWNY'}</h2>
     <p><strong>Twój wynik:</strong> ${score} / 74 pkt</p>
+    <p><strong>Próba:</strong> ${currentAttemptNumber || "?"} / 3</p>
     <p><strong>Naruszenia zmiany karty/okna:</strong> ${tabViolations} / ${maxTabViolations}</p>
     <p><strong>Próg zdania:</strong> 68 pkt</p>
-    <button onclick="location.reload()">Rozpocznij ponownie</button>
+    <p style="font-weight:700; color:${passed ? '#087a18' : '#8d1717'}">${syncMessage}</p>
+    <button onclick="location.reload()">Powrót</button>
     <div class="review">
       <h3>Podsumowanie odpowiedzi</h3>
       ${givenAnswers.map((r,i)=>`<details><summary>${i+1}. ${r.ok?'✅':'❌'} ${r.points} pkt — ${r.q}</summary><p>Twoja odpowiedź: <strong>${r.selected}</strong></p><p>Poprawna: <strong>${r.correct}</strong></p></details>`).join("")}
